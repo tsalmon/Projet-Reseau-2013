@@ -237,8 +237,10 @@ void *tcpAccept(void *data){
        char *nom;
        int indice;
        nom=strtok( NULL, "\n" );printf("le nom demande est %s",nom);
-       if((indice=shopName(nom))!=-1){ printf("l'indice est :%d\n",indice);
-          sprintf(tamponReponse,"200 SHOPINFO %s,%s,%d\n",nom,&listShop[indice]->addrMultiCast,listShop[indice]->port);
+       if((indice=shopName(nom))!=-1){ 
+          char rep[INET_ADDRSTRLEN];
+          inet_ntop(AF_INET,&listShop[indice]->addrMultiCast,rep,INET_ADDRSTRLEN);
+          sprintf(tamponReponse,"200 SHOPINFO %s,%s,%d\n",nom,rep,listShop[indice]->port);
           write(sock,tamponReponse,512);
        }
        else {      
@@ -256,11 +258,11 @@ void *tcpAccept(void *data){
 
  
 
-  void *tcp(void *arg)
-{
-    printf("Nous sommes dans le thread.\n");
-
-	int s,l;
+void *tcp(void *arg)
+  {
+  printf("Nous sommes dans le thread.\n");
+  
+  int s,l;
   struct sockaddr_in a;
 
   s = socket(PF_INET,SOCK_STREAM,0);
@@ -493,59 +495,6 @@ int main(int argc,char *argv[]) {
        }
     }
 
-
-   
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   pthread_t threadTcp;
   pthread_t threadUdp;
  
@@ -560,77 +509,51 @@ int main(int argc,char *argv[]) {
     perror("pthread_create");
     return EXIT_FAILURE;
     }
- 
- 
 
-
-
-
-
-
-
-if(haveNextCity){
+    if(haveNextCity){
       printf("le nom est:%s , l'ip est:%s , le port est:%d\n",nextCity->nom,nextCity->ip,nextCity->port);
-       
-       struct sockaddr_in a;
-       int s;
-       char tampon[512];
-
-       a.sin_family = AF_INET;
-       inet_aton(nextCity->ip,&(a.sin_addr));
-       a.sin_port = htons(nextCity->port);
-              
-       s = socket(PF_INET,SOCK_STREAM,0);
-       if (s==-1) {
-       fprintf(stderr,"socket problem\n");
-          exit(EXIT_FAILURE);
-       }
-
-
-       if(connect( s,(struct sockaddr *)&a,sizeof(a)) ==-1){
-           fprintf(stderr,"connection problem\n");
-           exit(EXIT_FAILURE);
-       }
-
-       sprintf(tampon, "INSERT %s,%s,%d",me->nom,me->ip,me->port);
-       write(s,tampon,512);
-       read(s,tampon,512);
-       printf("la reponse %s\n",tampon);
-       
-        
-       autonomous=0;
-       nextCitySock=s;
-       printf("reussi la socket est %d\n",nextCitySock);
-	while (read(s,tampon,512)>0) {
-	}
-   }
-
-
-
-
-
-
-
-
-    if (pthread_join(threadTcp, NULL)) {
-    perror("pthread_join");
-    return EXIT_FAILURE;
+      
+      struct sockaddr_in a;
+      int s;
+      char tampon[512];
+      
+      a.sin_family = AF_INET;
+      inet_aton(nextCity->ip,&(a.sin_addr));
+      a.sin_port = htons(nextCity->port);
+      
+      s = socket(PF_INET,SOCK_STREAM,0);
+      if (s==-1) {
+	fprintf(stderr,"socket problem\n");
+	exit(EXIT_FAILURE);
+      }
+      
+      
+      if(connect( s,(struct sockaddr *)&a,sizeof(a)) ==-1){
+	fprintf(stderr,"connection problem\n");
+	exit(EXIT_FAILURE);
+      }
+      
+      sprintf(tampon, "INSERT %s,%s,%d",me->nom,me->ip,me->port);
+      write(s,tampon,512);
+      read(s,tampon,512);
+      printf("la reponse %s\n",tampon);
+      
+      
+      autonomous=0;
+      nextCitySock=s;
+      printf("reussi la socket est %d\n",nextCitySock);
+      while (read(s,tampon,512)>0) {
+      }
     }
- 
+    
+    if (pthread_join(threadTcp, NULL)) {
+      perror("pthread_join");
+      return EXIT_FAILURE;
+    }
+    
     printf("Après la création du thread.\n");
-
-
-
-
-
-
-
-
-
+    
     return EXIT_SUCCESS;
-
-
-
 }
 
     

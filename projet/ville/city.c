@@ -348,7 +348,7 @@ void *udp(void *arg)
      }
     printf("Recu : %s\n",tampon);
  	
-	
+
     pSurTampon = strtok( tampon, " " );
     if(!(strcmp (pSurTampon, "NEWSHOP"))){
         char *name,*port;
@@ -635,4 +635,3 @@ if(haveNextCity){
 
 }
 
-    
