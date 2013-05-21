@@ -11,9 +11,9 @@ public class Client
             InetAddress IPAddress = InetAddress.getByName("127.0.0.1");
             byte[] sendData = new byte[1024];
             byte[] receiveData = new byte[1024];
-            String sentence = "SHOPLIST";//lecteur.next();
+            String sentence = "SHOPLIST\n";//lecteur.next();
             sendData = sentence.getBytes();
-            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
+            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 5000);
             clientSocket.send(sendPacket);
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
             clientSocket.receive(receivePacket);
