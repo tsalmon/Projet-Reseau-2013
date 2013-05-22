@@ -38,7 +38,7 @@ public class Client
 	    socket = new Socket(InetAddress.getByName("localhost"),5000);
 	    System.out.println("Demande de connexion");
 	    out = new PrintWriter(socket.getOutputStream());
-	    out.println("SHOPLIST");
+	    out.println("SHOPINFO eeeshop");
 	    out.flush();
 	    in = new BufferedReader (new InputStreamReader (socket.getInputStream()));
 	    String message_distant = in.readLine();
