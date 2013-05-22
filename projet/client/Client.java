@@ -50,9 +50,39 @@ public class Client
 	    e.printStackTrace();
 	}
     }
-
+    
+    public static void connexion_client(String nom_client, String adresse_ville, String port_ville)
+    {	
+	Socket socket;
+	BufferedReader in;
+	PrintWriter out;
+	
+	try {
+	    int port = Integer.parseInt(port_ville);
+	    socket = new Socket(InetAddress.getByName(adresse_ville),port);
+	    System.out.println("Demande de connexion");
+	    out = new PrintWriter(socket.getOutputStream());
+	    out.println("SHOPLIST");
+	    out.flush();
+	    in = new BufferedReader (new InputStreamReader (socket.getInputStream()));
+	    String message_distant = in.readLine();
+	    System.out.println(message_distant);
+	    socket.close();
+	}catch (UnknownHostException e) {
+	    System.err.println("Serveur inconnu");
+	}catch (IOException e) {
+	    e.printStackTrace();
+	}catch(NumberFormatException e)
+	    {
+		System.err.println("Le port doit etre un entier naturel");
+	    }
+    }
+    
     public static void main(String [] args)
     {
-	tcp();
+	if(args.length  < 3)
+	    System.out.println("usage:\nClient 'nom' 'adresse ville'");
+	else 
+	    connexion_client(args[0], args[1], args[2]);
     }
 }
