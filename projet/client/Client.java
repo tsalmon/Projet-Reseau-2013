@@ -3,8 +3,12 @@ import java.util.*;
 import java.io.*;
 public class Client
 {
-    static Scanner lecteur = new Scanner(System.in);
+    private static Socket socket;
+    private static BufferedReader in;
+    private static PrintWriter out;
+    private static Scanner lecteur = new Scanner(System.in);
     
+    /*
     public static void udp()
     {
 	try{
@@ -50,24 +54,40 @@ public class Client
 	    e.printStackTrace();
 	}
     }
-    
+    */
+
+    public static boolean reponse_positive()
+    {
+    }
+
+    public static boolean existe_cafe(String message_serveur)
+    {
+	if(reponse_positive(message_serveur))
+	    {
+		
+	    }
+	return false;
+    }
+
     public static void connexion_client(String nom_client, String adresse_ville, String port_ville)
     {	
-	Socket socket;
-	BufferedReader in;
-	PrintWriter out;
-	
-	try {
+	String reponse_ville;
+	try{
 	    int port = Integer.parseInt(port_ville);
+	    System.out.println("Demande de connexion...");
 	    socket = new Socket(InetAddress.getByName(adresse_ville),port);
-	    System.out.println("Demande de connexion");
 	    out = new PrintWriter(socket.getOutputStream());
 	    out.println("SHOPLIST");
 	    out.flush();
 	    in = new BufferedReader (new InputStreamReader (socket.getInputStream()));
 	    String message_distant = in.readLine();
-	    System.out.println(message_distant);
-	    socket.close();
+	    if(!existe_cafe(message_distant)
+	       {
+		   System.out.println("Aucun café n'est insrit dans cette ville");
+		   return ;
+	       }
+	       System.out.println(message_distant);
+	    System.out.println();
 	}catch (UnknownHostException e) {
 	    System.err.println("Serveur inconnu");
 	}catch (IOException e) {
