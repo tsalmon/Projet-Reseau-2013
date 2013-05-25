@@ -25,21 +25,22 @@ void *tcpAccept(void *data){
 
   while (read(sock,tampon,512)>0) {
      printf("%s\n",tampon);
-     pSurTampon = strtok( tampon, " " );
+     pSurTampon = strtok( tampon, "!" );
+     pSurTampon = strtok( pSurTampon, " " );
      printf("la commande est |%s|\n",pSurTampon);
      
 
      if(!(strcmp(pSurTampon, "INSERT"))){
         if(autonomous){
           // si la ville est autonome
-          strcpy(tamponReponse,"400 INSERT\n");
+          strcpy(tamponReponse,"400 INSERT!");
           write(sock,tamponReponse,512);
         }
         else{
 	   // si la ville accept les insert
            // on renvois le message d'acceptation
            // on ferme le canal d'emission 
-           strcpy(tamponReponse,"200 INSERT\n");
+           strcpy(tamponReponse,"200 INSERT!");
            write(sock,tamponReponse,512);
           // shutdown(sock,1);
 
@@ -51,7 +52,7 @@ void *tcpAccept(void *data){
                previousCity->ip=strtok( NULL , "," );
                previousCity->port=atoi(strtok( NULL , "\n" ));
 
-	       sprintf(tamponReponse, "SUBSTITUTE %s,%s,%d FOR %s,%s,%d 20",previousCity->nom,previousCity->ip,previousCity->port,me->nom,me->ip,me->port);
+	       sprintf(tamponReponse, "SUBSTITUTE %s,%s,%d FOR %s,%s,%d 20!",previousCity->nom,previousCity->ip,previousCity->port,me->nom,me->ip,me->port);
                write(nextCitySock,tamponReponse,512);
                printf("%s\n",tamponReponse);
            }
@@ -153,7 +154,7 @@ void *tcpAccept(void *data){
      
         }
         else if(ttl>0){
-           sprintf(tamponReponse, "SUBSTITUTE %s FOR %s,%s,%d %d", final,nom,ip,port,(ttl-1));
+           sprintf(tamponReponse, "SUBSTITUTE %s FOR %s,%s,%d %d!", final,nom,ip,port,(ttl-1));
            write(nextCitySock,tamponReponse,512);
         }
     }
@@ -170,15 +171,16 @@ void *tcpAccept(void *data){
                  nom = strtok( NULL, " " );
                  ttl = atoi(strtok( NULL, " " ));
                  message = strtok( NULL, "" );
+                 broadcast(message);
  
-                 printf("recu message global de %s , ttl a %d, le message est '%s'\n",nom,ttl,message);
+                 printf("recu message global de %s , ttl a %d, le message est '%s'\n et mon next est %s\n",nom,ttl,message,nextCity->nom);
 
                  if(strcmp(nextCity->nom,nom)==0 && haveNextCity){
                     printf("le prochaine est l'emteur je stop\n");
                  }
                  else if(haveNextCity && ttl>0){
-		   printf("j'envoit le message au prochain");
-                   sprintf(tamponReponse,"CAST GLOBAL FROM %s %d %s",nom,(ttl-1),message);	
+		   printf("j'envoit le message au prochain ");
+                   sprintf(tamponReponse,"CAST GLOBAL FROM %s %d %s!",nom,(ttl-1),message);	
                    write(nextCitySock,tamponReponse,512);						
                  }
            
@@ -187,9 +189,10 @@ void *tcpAccept(void *data){
               //si on est le premier a le recevoir
                  char *message;
                  message  = strtok( NULL, "" );
+                 broadcast(message);
                  printf("le message est %s %s\n",pSurTampon,message);
                  if(haveNextCity){
-                    sprintf(tamponReponse,"CAST GLOBAL FROM %s %d %s %s",me->nom,20,pSurTampon,message);
+                    sprintf(tamponReponse,"CAST GLOBAL FROM %s %d %s %s!",me->nom,20,pSurTampon,message);
                     write(nextCitySock,tamponReponse,512);
                  }
               }
@@ -198,15 +201,16 @@ void *tcpAccept(void *data){
             // si ce message est local
             pSurTampon  = strtok( NULL, "" );
             printf("le message est %s\n",pSurTampon);
+            broadcast(pSurTampon);
          }
          else{ 
            // sinon on a une erreur de syntax
-           strcpy(tampon,"501 SYNTAX\n");
+           strcpy(tampon,"501 SYNTAX!");
            write(sock,tampon,512);
         }
     }
     else if(!(strcmp(pSurTampon, "REMOVE"))){
-       strcpy(tamponReponse,"200 REMOVE\n");
+       strcpy(tamponReponse,"200 REMOVE!");
        write(sock,tamponReponse,512);
  
        char *nom, *ip;
@@ -216,11 +220,12 @@ void *tcpAccept(void *data){
        ip = strtok( NULL, "," );
        port = atoi(strtok( NULL, "," ));
 
-       sprintf(tamponReponse, "SUBSTITUTE %s,%s,%d FOR %s,%s,%d 20", me->nom,me->ip,me->port,nom,ip,port);
+       sprintf(tamponReponse, "SUBSTITUTE %s,%s,%d FOR %s,%s,%d 20!", me->nom,me->ip,me->port,nom,ip,port);
        write(nextCitySock,tamponReponse,512);
          
     }
-    else if(!(strcmp(pSurTampon, "SHOPLIST\n"))){
+    else if(!(strcmp(pSurTampon, "SHOPLIST"))){
+       isAlive();
        int nb ,i; char list[200];
        bzero(list,200);     
        nb=0;
@@ -230,7 +235,7 @@ void *tcpAccept(void *data){
              else sprintf(list,"%s",listShop[i]->name);
           }
        }
-       sprintf(tamponReponse,"200 SHOPLIST %d %s\n",nb,list);
+       sprintf(tamponReponse,"200 SHOPLIST %d %s\n!",nb,list);
        write(sock,tamponReponse,512);
     }
     else if(!(strcmp(pSurTampon, "SHOPINFO"))){
@@ -240,16 +245,16 @@ void *tcpAccept(void *data){
        if((indice=shopName(nom))!=-1){ 
           char rep[INET_ADDRSTRLEN];
           inet_ntop(AF_INET,&listShop[indice]->addrMultiCast,rep,INET_ADDRSTRLEN);
-          sprintf(tamponReponse,"200 SHOPINFO %s,%s,%d\n",nom,rep,listShop[indice]->port);
+          sprintf(tamponReponse,"200 SHOPINFO %s,%s,%d!",nom,rep,listShop[indice]->port);
           write(sock,tamponReponse,512);
        }
        else {      
-          sprintf(tamponReponse,"403 SHOPINFO not found\n");
+          sprintf(tamponReponse,"403 SHOPINFO not found!");
           write(sock,tamponReponse,512);
        }
     }
     else {
-       strcpy(tampon,"501 SYNTAX\n");
+       strcpy(tampon,"501 SYNTAX!");
        write(sock,tampon,512);
     }
   }
@@ -349,8 +354,10 @@ void *udp(void *arg)
     printf("Recu : %s\n",tampon);
  	
 
-    pSurTampon = strtok( tampon, " " );
+    pSurTampon = strtok( tampon, "!" );
+    pSurTampon = strtok( pSurTampon, " " );
     if(!(strcmp (pSurTampon, "NEWSHOP"))){
+        isAlive();
         char *name,*port;
 
         name = strtok( NULL, "," );
@@ -358,28 +365,27 @@ void *udp(void *arg)
 
 	int place;
         if((place=freePlace())==-1){ 
-	   strcpy(tampon,"500 NEWSHOP city full");
+	   strcpy(tampon,"500 NEWSHOP city full!");
            sendto(sock,tampon,256,0,(struct sockaddr *)(&from),lg);
         }
         else if(shopName(name)!=-1){ 
-	   strcpy(tampon,"404 NEWSHOP existing name");
+	   strcpy(tampon,"404 NEWSHOP existing name!");
            sendto(sock,tampon,256,0,(struct sockaddr *)(&from),lg);	
         }
         else if(!atoi(port)){
-           strcpy(tampon,"501 SYNTAX");
+           strcpy(tampon,"501 SYNTAX!");
            sendto(sock,tampon,256,0,(struct sockaddr *)(&from),lg);	
         }
         else {
 	   listShop[place]->use=1;
            strcpy(listShop[place]->name,name);
            listShop[place]->port=atoi(port);
-           listShop[place]->addrShop=from.sin_addr;
+           listShop[place]->addrShop=from;
 
            char rep[INET_ADDRSTRLEN];
            inet_ntop(AF_INET,&listShop[place]->addrMultiCast,rep,INET_ADDRSTRLEN);
-           strcpy(tampon,"200 NEWSHOP ");
-           strcat(tampon,rep);
-	   sendto(sock,tampon,256,0,(struct sockaddr *)(&from),lg);printf("test5\n");
+           sprintf(tampon,"200 NEWSHOP %s!",rep);
+	   sendto(sock,tampon,256,0,(struct sockaddr *)(&from),lg);
         }
     }
     else if(!(strcmp (pSurTampon, "CLOSE"))){
@@ -392,7 +398,8 @@ void *udp(void *arg)
        }
     }
     else {
-       strcpy(tampon,"501 SYNTAX");
+       strcpy(tampon,"501 SYNTAX!");
+       sendto(sock,tampon,256,0,(struct sockaddr *)(&from),lg);
     }
 
     printf("Renvoye : %s\n",tampon);
@@ -416,17 +423,17 @@ int main(int argc,char *argv[]) {
 
     me = (cityInfo*) malloc(sizeof(cityInfo));
     me->nom="";
-    me->ip="localhost";
+    me->ip="127.0.0.1";
     me->port=5678;
 
     nextCity = (cityInfo*) malloc(sizeof(cityInfo));
     nextCity->nom="";
-    nextCity->ip="localhost";
+    nextCity->ip="127.0.0.1";
     nextCity->port=5678;
 
     previousCity = (cityInfo*) malloc(sizeof(cityInfo));
     previousCity->nom="";
-    previousCity->ip="localhost";
+    previousCity->ip="127.0.0.1";
     previousCity->port=5678;
 
 
@@ -594,7 +601,7 @@ if(haveNextCity){
            exit(EXIT_FAILURE);
        }
 
-       sprintf(tampon, "INSERT %s,%s,%d",me->nom,me->ip,me->port);
+       sprintf(tampon, "INSERT %s,%s,%d!",me->nom,me->ip,me->port);
        write(s,tampon,512);
        read(s,tampon,512);
        printf("la reponse %s\n",tampon);

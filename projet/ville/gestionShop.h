@@ -4,7 +4,7 @@ typedef struct{
    int alive;
    char name[20];
    unsigned short   port;
-   struct in_addr addrShop;
+   struct sockaddr_in addrShop;
    struct in_addr addrMultiCast;   
 } shop;
 
@@ -16,3 +16,4 @@ int isFreeName(char*);
 void closeShop(struct in_addr);
 int isAlive();
 void alwaysAlive(struct in_addr);
+void broadcast(char*);

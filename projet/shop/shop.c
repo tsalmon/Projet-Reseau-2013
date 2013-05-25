@@ -36,7 +36,10 @@ void *udp(void *arg)
     exit(EXIT_FAILURE);
   }
 
-  bzero(&addr,sizeof(addr));
+  addrDiffusion.sin_family      = AF_INET;
+  addrDiffusion.sin_addr.s_addr = inet_addr(ipDiffusion);
+  addrDiffusion.sin_port        = htons(PORT);
+ 
   addr.sin_family      = AF_INET;
   addr.sin_addr.s_addr = INADDR_ANY;
   addr.sin_port        = htons(PORT);
@@ -61,10 +64,11 @@ void *udp(void *arg)
 
       printf("msg: %s\n",tampon);
 
+      pSurTampon = strtok( tampon, "!" );
       pSurTampon = strtok( tampon, " " );
      
       if(!(strcmp(pSurTampon, "HELLO"))){
-      
+         
       }
 
 
@@ -135,7 +139,7 @@ int main(int argc,char *argv[]) {
   inet_aton(ipCity,&(addrto.sin_addr));
   addrto.sin_port = htons(portCity);
 
-  sprintf(tampon,"NEWSHOP %s,%d",NOM,PORT);  
+  sprintf(tampon,"NEWSHOP %s,%d!",NOM,PORT);  
 
    if (sendto(sock,tampon,256,0,(struct sockaddr *)(&addrto),sizeof(addrto))==-1) {
     perror("sendto: ");
@@ -150,7 +154,8 @@ int main(int argc,char *argv[]) {
   }
   printf("reponse de la ville : %s\n",tampon);
 
-  pSurTampon = strtok( tampon, " " );
+  pSurTampon = strtok( tampon, "!" );
+  pSurTampon = strtok( pSurTampon, " " );
 
   if(!(strcmp(pSurTampon, "200"))){
      pSurTampon = strtok( NULL, " " );
@@ -189,11 +194,28 @@ int main(int argc,char *argv[]) {
    }
 
   while(1){
-   recv(sock,tampon,256,0);
-   printf("Recu de la ville : %s\n",tampon);
+     recv(sock,tampon,256,0);
+     printf("Recu de la ville : %s\n",tampon);
+     pSurTampon = strtok( tampon, "!" );
+     pSurTampon = strtok( pSurTampon, " " );
+
+     if(!(strcmp(pSurTampon, "ALIVE"))){
+        sprintf(tampon,"200 ALIVE");  
+        sendto(sock,tampon,256,0,(struct sockaddr *)(&addrto),sizeof(addrto));
+     }
+     else if(!(strcmp(pSurTampon, "BROADCAST"))){
+        sprintf(tampon,"NEWS %s!",strtok ( NULL , ""));
+        sendto(sockDiffusion,tampon,256,0,(struct sockaddr *)(&addrDiffusion),sizeof(addrDiffusion));
+     }
   }
 
 
 return 1;
 } 
+
+
+
+
+
+
 
