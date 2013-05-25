@@ -25,29 +25,24 @@ int shopName(char *name){
 void closeShop(struct in_addr from){
    int i;
    for(i=0;i<citySize;i++){
-	if(listShop[i]->addrShop.s_addr==from.s_addr) listShop[i]->use=0;
+	if(listShop[i]->addrShop.sin_addr.s_addr==from.s_addr) listShop[i]->use=0;
    }
 
 }
 
 int isAlive(){
-  return 1;
-  struct sockaddr_in addr;
   int sock;
   char tampon[256];
-  strcpy(tampon,"ALIVE");
+  sprintf(tampon,"ALIVE");
   sock = socket(PF_INET,SOCK_DGRAM,0); // Protocol family
   if (sock==-1) {
      return -1;
   }
-  addr.sin_family = AF_INET; // Address family
   int i;
   for(i=0;i<citySize;i++){
      if(listShop[i]->use){
         listShop[i]->alive=0;
-        addr.sin_port = htons(listShop[i]->port);
-        addr.sin_addr = listShop[i]->addrShop;
-        sendto(sock,tampon,256,0,(struct sockaddr *)(&addr),sizeof(addr));
+        sendto(sock,tampon,256,0,(struct sockaddr *)(&listShop[i]->addrShop),sizeof(listShop[i]->addrShop));
       }  
    }
 
@@ -61,7 +56,20 @@ int isAlive(){
 void alwaysAlive(struct in_addr from){
    int i;
    for(i=0;i<citySize;i++){
-	if(listShop[i]->addrShop.s_addr==from.s_addr) listShop[i]->alive=1;
+	if(listShop[i]->addrShop.sin_addr.s_addr==from.s_addr) listShop[i]->alive=1;
    }
+}
+
+void broadcast(char *message){
+   int i,sock;
+   char tampon[256];
+   sprintf(tampon,"BROADCAST %s!",message);
+   if(sock=socket(AF_INET,SOCK_DGRAM,0)){
+     for(i=0;i<citySize;i++){
+	if(listShop[i]->use) {
+           sendto(sock,tampon,256,0,(struct sockaddr *)(&listShop[i]->addrShop),sizeof(listShop[i]->addrShop)); 
+        }
+      } 
+    }
 }
 

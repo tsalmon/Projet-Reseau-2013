@@ -171,14 +171,15 @@ void *tcpAccept(void *data){
                  nom = strtok( NULL, " " );
                  ttl = atoi(strtok( NULL, " " ));
                  message = strtok( NULL, "" );
+                 broadcast(message);
  
-                 printf("recu message global de %s , ttl a %d, le message est '%s'\n",nom,ttl,message);
+                 printf("recu message global de %s , ttl a %d, le message est '%s'\n et mon next est %s\n",nom,ttl,message,nextCity->nom);
 
                  if(strcmp(nextCity->nom,nom)==0 && haveNextCity){
                     printf("le prochaine est l'emteur je stop\n");
                  }
                  else if(haveNextCity && ttl>0){
-		   printf("j'envoit le message au prochain");
+		   printf("j'envoit le message au prochain ");
                    sprintf(tamponReponse,"CAST GLOBAL FROM %s %d %s!",nom,(ttl-1),message);	
                    write(nextCitySock,tamponReponse,512);						
                  }
@@ -188,6 +189,7 @@ void *tcpAccept(void *data){
               //si on est le premier a le recevoir
                  char *message;
                  message  = strtok( NULL, "" );
+                 broadcast(message);
                  printf("le message est %s %s\n",pSurTampon,message);
                  if(haveNextCity){
                     sprintf(tamponReponse,"CAST GLOBAL FROM %s %d %s %s!",me->nom,20,pSurTampon,message);
@@ -199,6 +201,7 @@ void *tcpAccept(void *data){
             // si ce message est local
             pSurTampon  = strtok( NULL, "" );
             printf("le message est %s\n",pSurTampon);
+            broadcast(pSurTampon);
          }
          else{ 
            // sinon on a une erreur de syntax
@@ -222,6 +225,7 @@ void *tcpAccept(void *data){
          
     }
     else if(!(strcmp(pSurTampon, "SHOPLIST"))){
+       isAlive();
        int nb ,i; char list[200];
        bzero(list,200);     
        nb=0;
@@ -353,6 +357,7 @@ void *udp(void *arg)
     pSurTampon = strtok( tampon, "!" );
     pSurTampon = strtok( pSurTampon, " " );
     if(!(strcmp (pSurTampon, "NEWSHOP"))){
+        isAlive();
         char *name,*port;
 
         name = strtok( NULL, "," );
@@ -375,7 +380,7 @@ void *udp(void *arg)
 	   listShop[place]->use=1;
            strcpy(listShop[place]->name,name);
            listShop[place]->port=atoi(port);
-           listShop[place]->addrShop=from.sin_addr;
+           listShop[place]->addrShop=from;
 
            char rep[INET_ADDRSTRLEN];
            inet_ntop(AF_INET,&listShop[place]->addrMultiCast,rep,INET_ADDRSTRLEN);
@@ -423,12 +428,12 @@ int main(int argc,char *argv[]) {
 
     nextCity = (cityInfo*) malloc(sizeof(cityInfo));
     nextCity->nom="";
-    nextCity->ip="localhost";
+    nextCity->ip="127.0.0.1";
     nextCity->port=5678;
 
     previousCity = (cityInfo*) malloc(sizeof(cityInfo));
     previousCity->nom="";
-    previousCity->ip="localhost";
+    previousCity->ip="127.0.0.1";
     previousCity->port=5678;
 
 
@@ -596,7 +601,7 @@ if(haveNextCity){
            exit(EXIT_FAILURE);
        }
 
-       sprintf(tampon, "INSERT %s,%s,%d",me->nom,me->ip,me->port);
+       sprintf(tampon, "INSERT %s,%s,%d!",me->nom,me->ip,me->port);
        write(s,tampon,512);
        read(s,tampon,512);
        printf("la reponse %s\n",tampon);
