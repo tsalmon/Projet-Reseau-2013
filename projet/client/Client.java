@@ -19,8 +19,9 @@ import java.util.*;
 
 public class Client extends JFrame implements KeyListener, Runnable
 {
-    static Client recepteur = new Client(null, 1);
-    static Thread recu = new Thread(recepteur);
+    private int mode; 
+    private String pseudo;
+    static Thread recu;
     
     private InetAddress inet = null;
     private int PORT;
@@ -40,23 +41,16 @@ public class Client extends JFrame implements KeyListener, Runnable
       0: recherche de ville
       1: connexion a une ville
      */
-    Client(InetAddress inet, int PORT)
+    Client(InetAddress inet, int PORT, int mode)
     {
 	reader = true;
 	this.inet = inet;
 	this.PORT = PORT;
+	this.mode = mode;
     }
     
     Client()
     {
-	/*
-	try{
-	    inet = InetAddress.getByName("127.1.2.4");
-	}catch(Exception e){
-	    e.printStackTrace();
-	}
-	*/
-
 	entree.addKeyListener(this);
 	texte.setFont(new Font("Monospaced", Font.PLAIN, 14));
 	texte.setEditable(false);
@@ -86,11 +80,10 @@ public class Client extends JFrame implements KeyListener, Runnable
 		    }
 		else
 		    {
-			System.out.println("keyPressed etat != 0");
 			String s = entree.getText();
 			historique.add(s);
 			index_historique++;
-			write(s);
+			write("MESSAGE " + pseudo + " " + s);
 		    }
 		entree.setText("");
 	    }
@@ -146,10 +139,22 @@ public class Client extends JFrame implements KeyListener, Runnable
             DatagramPacket dp = new DatagramPacket(data, data.length);
             while (true) {
                 ms.receive(dp);
-                String s = new String(dp.getData(),0,dp.getLength());
-		/*System.out.println("Received "+s);*/
-		all_historique.add(s);
-		display();
+                String recupere = new String(dp.getData(),0,dp.getLength());
+		String [] reponse = recupere.split(" ");
+		String s ="";
+		if(reponse[0].equals("MESSAGE")){
+		    s = reponse[1] + ": ";
+		    for(int i = 2; i < reponse.length; i++)
+			s+= reponse[i]+" ";
+		}
+		else if(reponse[0].equals("CONNEXION")){
+		    s = reponse[1] + " vient de se rejoindre le cafe";  
+		}
+		else if(reponse[0].equals("CLOSE"))
+		    {
+			
+		    }
+		affiche(s);
             }
         } catch(Exception e) {
             e.printStackTrace();
@@ -184,9 +189,7 @@ public class Client extends JFrame implements KeyListener, Runnable
 	    PORT = Integer.parseInt(c[2]);
 	    inet = InetAddress.getByName(c[1]);
 	    socket = new Socket(inet, PORT);
-
-	    all_historique.add("connexion à " + c[1] +"("+c[2]+")");
-	    display();
+	    affiche("connexion à " + c[1] +"("+c[2]+")");
 	    etat = 1;
 	}
 	catch(IOException e){affiche("Impossible de se connecter");}
@@ -215,9 +218,7 @@ public class Client extends JFrame implements KeyListener, Runnable
 		{
 		    cafe += "\t- " + liste_cafe[i]+ "\n";
 		}
-	    all_historique.add(cafe);
-	    display();
-	    
+	    affiche(cafe);
 	}
 	catch (UnknownHostException e) {
 	    System.err.println("Serveur inconnu");
@@ -234,7 +235,7 @@ public class Client extends JFrame implements KeyListener, Runnable
     {
 	try{
 	    out = new PrintWriter(socket.getOutputStream());
-	    out.println("SHOPINFO " +cafe);
+	    out.println("SHOPINFO " +cafe + "!");
 	    out.flush();
 	    in = new BufferedReader (new InputStreamReader (socket.getInputStream()));
 	    String[] reponse = parse(in).split(" ");
@@ -245,7 +246,7 @@ public class Client extends JFrame implements KeyListener, Runnable
 		    return ;
 		}
 	    String[] info = reponse[2].split(",");
-	    all_historique.add("SHOPINFO "+cafe +":\n\tadresse: " + info[1] + "\n\tPort connexion:" + info[2]);
+	    all_historique.add("SHOPINFO "+cafe +":\n\tadresse: " + info[1] + "\n\tPort connexion:" + info[2] );
 	    display();
 	}
 	catch (UnknownHostException e) {
@@ -261,14 +262,18 @@ public class Client extends JFrame implements KeyListener, Runnable
 
     public void hello(String pseudo, String ip, String port, String message)
     {
-	System.out.println(pseudo +" " + ip + " " + port + " " + message);
 	try{
-	    InetAddress add = InetAddress.getByName(ip); 
-	    recepteur.inet = add;
-	    recepteur.PORT = Integer.parseInt(port);
-	    recu = new Thread(recepteur);
-	    recu.run();
-	    System.out.println("hello fin");
+	    this.pseudo = pseudo;
+	    inet = InetAddress.getByName(ip); 
+	    PORT = Integer.parseInt(port);
+	    recu = new Thread(new Client(inet, PORT, 0));
+	    recu.start();
+	    write("CONNEXION " + pseudo);
+	    if(message.length() > 0)
+		{
+		    write("MESSAGE " + pseudo + " " + message );
+		}
+	    etat = 2;
 	}
 	catch(UnknownHostException e){
 	    all_historique.add("HELLO: impossible de lancer la connexion");
@@ -337,7 +342,7 @@ public class Client extends JFrame implements KeyListener, Runnable
     {
 	try{
 	    Thread send = new Thread(new Client());  
-	    send.run();
+	    send.start();
 	}
 	catch(Exception e)
 	    {
