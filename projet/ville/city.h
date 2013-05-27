@@ -25,7 +25,4 @@ cityInfo *previousCity;
 
 void insertAldermen(int,char[512],char*);
 
-<<<<<<< HEAD
 
-=======
->>>>>>> 500517edaf8d287b9b9cae7990d3e2c0085b7507
