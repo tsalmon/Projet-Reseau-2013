@@ -48,7 +48,7 @@ int isAlive(){
 
   sleep(1);
   for(i=0;i<citySize;i++){
-     if(!listShop[i]->alive) listShop[i]->use=0;
+     if(listShop[i]->use && !listShop[i]->alive) listShop[i]->use=0;
   }
   return 1;
 }

@@ -235,13 +235,13 @@ void *tcpAccept(void *data){
              else sprintf(list,"%s",listShop[i]->name);
           }
        }
-       sprintf(tamponReponse,"200 SHOPLIST %d %s\n!",nb,list);
+       sprintf(tamponReponse,"200 SHOPLIST %d %s!",nb,list);
        write(sock,tamponReponse,512);
     }
     else if(!(strcmp(pSurTampon, "SHOPINFO"))){
        char *nom;
        int indice;
-       nom=strtok( NULL, "\n" );printf("le nom demande est %s",nom);
+       nom=strtok( NULL, "" );printf("le nom demande est %s",nom);
        if((indice=shopName(nom))!=-1){ 
           char rep[INET_ADDRSTRLEN];
           inet_ntop(AF_INET,&listShop[indice]->addrMultiCast,rep,INET_ADDRSTRLEN);
@@ -312,19 +312,81 @@ void *tcpAccept(void *data){
     pthread_exit(NULL);
 }
  
+void *messageUdp(void *arg)
+{
+    printf("je sui le thread messageUdp\n");
+    infoUdp * info;
+    info =  arg; 
+    int sock; sock= info->sock;
+    char tampon[256]; strcpy(tampon,info->tampon);
+    struct sockaddr_in from; from = info->from;
+    char *pSurTampon;
+  
+    printf("Recu : %s\n",tampon);
+ 
+    pSurTampon = strtok( tampon, "!" );
+    pSurTampon = strtok( pSurTampon, " " );
+    if(!(strcmp (pSurTampon, "NEWSHOP"))){
+        char *name,*port;
 
+        name = strtok( NULL, "," );
+        port = strtok( NULL, "," );
+     
+        isAlive();
 
+	int place;
+        if((place=freePlace())==-1){ 
+	   strcpy(tampon,"500 NEWSHOP city full!");
+           sendto(sock,tampon,256,0,(struct sockaddr *)(&from),sizeof(from));
+        }
+        else if(shopName(name)!=-1){ 
+	   strcpy(tampon,"404 NEWSHOP existing name!");
+           sendto(sock,tampon,256,0,(struct sockaddr *)(&from),sizeof(from));	
+        }
+        else if(!atoi(port)){
+           strcpy(tampon,"501 SYNTAX!");
+           sendto(sock,tampon,256,0,(struct sockaddr *)(&from),sizeof(from));	
+        }
+        else {
+           printf("la place choisi est %d\n",place);
+	   listShop[place]->use=1;
+           strcpy(listShop[place]->name,name);
+           listShop[place]->port=atoi(port);
+           listShop[place]->addrShop=from;
+
+           char rep[INET_ADDRSTRLEN];
+           inet_ntop(AF_INET,&listShop[place]->addrMultiCast,rep,INET_ADDRSTRLEN);
+           sprintf(tampon,"200 NEWSHOP %s!",rep);
+	   sendto(sock,tampon,256,0,(struct sockaddr *)(&from),sizeof(from));
+        }
+    }
+    else if(!(strcmp (pSurTampon, "CLOSE"))){
+       closeShop(from.sin_addr);
+    }
+    else if(!(strcmp (pSurTampon, "200"))){
+       pSurTampon = strtok( NULL, " " );
+       if(!(strcmp (pSurTampon, "ALIVE"))){
+          alwaysAlive(from.sin_addr);
+       }
+    }
+    else {
+       strcpy(tampon,"501 SYNTAX!");
+       sendto(sock,tampon,256,0,(struct sockaddr *)(&from),sizeof(from));
+    }
+
+    printf("Renvoye : %s\n",tampon);
+    free(info);
+    pthread_exit(NULL);
+}
+ 
 
 
 
 void *udp(void *arg)
 {
 //////////initialisation////////////////////////////////////////////////////////
-  struct sockaddr_in addr,from;
-  socklen_t lg;
+  struct sockaddr_in addr;
   int sock;
-  char tampon[256];
-  char *pSurTampon;
 
   sock = socket(PF_INET,SOCK_DGRAM,0); 
   if (sock==-1) {
@@ -339,77 +401,35 @@ void *udp(void *arg)
       close(sock);
       exit(1);
   }
-  lg = sizeof(from);
    
 //////////ecoute ///////////////////////////////////////////////////////////
  printf("Udp pret a ecouter\n");
-  while (1) {
-     int r;
-     r = recvfrom(sock,tampon,256,0,(struct sockaddr *)(&from),&lg);
-     if (r==-1) {
-        perror("recv:");
-        close(sock);
-        exit(1);
+  while (1) { 
+     struct sockaddr_in from;
+     socklen_t lg;
+     lg = sizeof(from);
+     char tampon[256];
+     int r; printf("j'attend un message\n");
+     r = recvfrom(sock,tampon,256,0,(struct sockaddr *)(&from),&lg); printf("jai recu un message r=%d\n",r);
+     if (r!=-1) { printf("je trasnmet au thread\n");
+       infoUdp * info;
+       info = (infoUdp *) malloc(sizeof(infoUdp));
+       info->sock=sock;
+       info->from=from;
+       strcpy(info->tampon,tampon);
+       pthread_t threadMessageUdp;
+       pthread_create(&threadMessageUdp, NULL, messageUdp, info);
      }
-    printf("Recu : %s\n",tampon);
- 	
-
-    pSurTampon = strtok( tampon, "!" );
-    pSurTampon = strtok( pSurTampon, " " );
-    if(!(strcmp (pSurTampon, "NEWSHOP"))){
-        isAlive();
-        char *name,*port;
-
-        name = strtok( NULL, "," );
-        port = strtok( NULL, "," );
-
-	int place;
-        if((place=freePlace())==-1){ 
-	   strcpy(tampon,"500 NEWSHOP city full!");
-           sendto(sock,tampon,256,0,(struct sockaddr *)(&from),lg);
-        }
-        else if(shopName(name)!=-1){ 
-	   strcpy(tampon,"404 NEWSHOP existing name!");
-           sendto(sock,tampon,256,0,(struct sockaddr *)(&from),lg);	
-        }
-        else if(!atoi(port)){
-           strcpy(tampon,"501 SYNTAX!");
-           sendto(sock,tampon,256,0,(struct sockaddr *)(&from),lg);	
-        }
-        else {
-	   listShop[place]->use=1;
-           strcpy(listShop[place]->name,name);
-           listShop[place]->port=atoi(port);
-           listShop[place]->addrShop=from;
-
-           char rep[INET_ADDRSTRLEN];
-           inet_ntop(AF_INET,&listShop[place]->addrMultiCast,rep,INET_ADDRSTRLEN);
-           sprintf(tampon,"200 NEWSHOP %s!",rep);
-	   sendto(sock,tampon,256,0,(struct sockaddr *)(&from),lg);
-        }
-    }
-    else if(!(strcmp (pSurTampon, "CLOSE"))){
-       closeShop(from.sin_addr);
-    }
-    else if(!(strcmp (pSurTampon, "200"))){
-       pSurTampon = strtok( NULL, " " );
-       if(!(strcmp (pSurTampon, "ALIVE"))){
-          alwaysAlive(from.sin_addr);
-       }
-    }
     else {
-       strcpy(tampon,"501 SYNTAX!");
-       sendto(sock,tampon,256,0,(struct sockaddr *)(&from),lg);
+      perror("socket: ");
     }
-
-    printf("Renvoye : %s\n",tampon);
   }
-  close(sock);
-
+    close(sock);
     (void) arg;
     pthread_exit(NULL);
 }
- 
+
+
 
 
 
