@@ -172,12 +172,13 @@ public class Client extends JFrame implements KeyListener, Runnable
 		    for(int i = 2; i < reponse.length; i++)
 			s+= reponse[i]+" ";
 		}
-		else if(reponse[0].equals("CONNEXION")){
+		else if(reponse[0].equals("HELLO")){
 		    s = reponse[1] + " vient de se rejoindre le cafe";  
 		}
 		else if(reponse[0].equals("CLOSE"))
 		    {
-			
+			s = "Cafe ferme";
+			ms.close();
 		    }
 		affiche(s);
             }
@@ -239,7 +240,7 @@ public class Client extends JFrame implements KeyListener, Runnable
 		    display();
 		    return;
 		}
-	    cafe_nom.add(first_cafe[first_cafe.length-1].substring(0, first_cafe[first_cafe.length-1].length() - 1));
+	    cafe_nom.add(first_cafe[first_cafe.length-1]);
 	    shopinfo(cafe_nom.get(0));
 	    String cafe =  "Liste des cafés:\n\t- " + cafe_nom.get(0) 
 		+": "+ cafe_ip.get(0) 
@@ -248,7 +249,7 @@ public class Client extends JFrame implements KeyListener, Runnable
 
 	    for(int i = 1 ; i < liste_cafe.length; i++)
 		{
-		    cafe_nom.add(liste_cafe[i].substring(0, liste_cafe[i].length() - 1));
+		    cafe_nom.add(liste_cafe[i]);
 		    shopinfo(liste_cafe[i]);
 		    cafe += "\t- "+ cafe_nom.get(i) +":"+ cafe_ip.get(i)+ "("+ cafe_port.get(i) +")\n";
 		}
@@ -314,7 +315,7 @@ public class Client extends JFrame implements KeyListener, Runnable
 		    inet = InetAddress.getByName(cafe_ip.get(id)); 
 		    PORT = cafe_port.get(id);
 		    etat = 2;
-		    affiche("Connexion cafe... presentez vous : pseudo [, ip] [, message]");
+		    affiche("Connexion cafe... presentez vous : HELLO pseudo [, ip] [, message]");
 		}
 		catch(UnknownHostException e){
 		    affiche("Erreur inconnu");
@@ -324,42 +325,41 @@ public class Client extends JFrame implements KeyListener, Runnable
     
     public void hello(String pseudo, String ip,String message)
     {
-	try{
-	    /*
-	    // cherche un port libre
-	    int i = 0;
-	    while (port_client == -1) {
-		Port p = new Port(i);
-		p.setDaemon(true);
-		p.start();
-		i++;
-	    }
-	    */
 	    port_client = 11111;
-	    out = new PrintWriter(socket.getOutputStream());
-	    System.out.println(port_client);
-	    DatagramSocket socket = new DatagramSocket(port_client);
-	    socket.setSoTimeout(1000);
-	    byte [] news = new byte[100];
-	    DatagramPacket paquet = new DatagramPacket(news, news.length); 
-	    out.println("HELLO " + pseudo + " " + ip + " " + message + "!");
-	    out.flush();
+	    etat = 3;
+	    this.pseudo = pseudo;
+	    try 
+		{
+		    byte[] news = new byte[1024];
+		    String s = "HELLO " + pseudo + "," + ip + "," + port_client + "," + message +"!";
+		    // datagram hello
+		    DatagramSocket hello_socket = new DatagramSocket();
+		    DatagramPacket hello_paquet = new DatagramPacket(s.getBytes(),s.getBytes().length,inet,PORT);
+		    //datagram news
+		    MulticastSocket new_socket = new MulticastSocket(port_client);
+		    new_socket.joinGroup(inet);
+		    DatagramPacket new_paquet = new DatagramPacket(news, news.length);
+		    new_socket.setSoTimeout(1500);
+		    hello_socket.send(hello_paquet);
+		    while(true)
+			{
+			    try{
+				new_socket.receive(new_paquet);
+				String recu_new = new String(new_paquet.getData(),0, new_paquet.getLength());
+				System.out.println(recu_new);
+				affiche(recu_new);
+			    }
+			    catch(SocketTimeoutException e)
+				{
+				    return ;
+				}
+			}
+		}
+	    catch(Exception e) 
+		{
+		    e.printStackTrace();
+		}
 	    
-	    // reception des données, definition de la taille de reception                   
-	    while(true){
-		try{
-		    socket.receive(paquet);
-		    String chaine = new String(paquet.getData());
-		    affiche(chaine);
-		}
-		catch(SocketTimeoutException e){
-		    return;
-		}
-	    }
-	}
-	catch(Exception e){
-	    e.printStackTrace();
-	}
     }
     
     public void commande()
@@ -404,7 +404,9 @@ public class Client extends JFrame implements KeyListener, Runnable
 	    {
 		if(etat == 2)
 		    {
-			hello(c[1], (c.length > 2) ? c[2] : "127.0.0.1", (c.length == 4) ? c[3] : "");
+			hello(c[1], (c.length > 2) ? c[2] : "127.0.0.1", (c.length == 4) ? c[3] : "Bonjour");
+			recu = new Thread(new Client(inet, PORT, 0));
+			recu.start();
 		    }
 		else
 		    {

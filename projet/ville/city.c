@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "gestionShop.h"
-#include "city.h";
+#include "city.h"
 #include <errno.h>
 
 
