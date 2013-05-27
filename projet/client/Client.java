@@ -208,6 +208,22 @@ public class Client extends JFrame implements KeyListener, Runnable
 	}
 	return retour;
     }
+
+    public String parse_byte(byte [] in)
+    {
+	String retour = "";
+	int i = 1;
+	int x = (int)in[0];
+	while(i < in.length && x != 33)
+	    {
+		System.out.println(x);
+		retour += (char) x; 
+		x = in[i];
+		i++;
+	    }
+	return retour;
+    }
+
     
     public void ville(String[] c)
     {
@@ -334,23 +350,29 @@ public class Client extends JFrame implements KeyListener, Runnable
 		    String s = "HELLO " + pseudo + "," + ip + "," + port_client + "," + message +"!";
 		    // datagram hello
 		    DatagramSocket hello_socket = new DatagramSocket();
-		    DatagramPacket hello_paquet = new DatagramPacket(s.getBytes(),s.getBytes().length,inet,PORT);
-		    //datagram news
-		    MulticastSocket new_socket = new MulticastSocket(port_client);
-		    new_socket.joinGroup(inet);
-		    DatagramPacket new_paquet = new DatagramPacket(news, news.length);
-		    new_socket.setSoTimeout(1500);
+		    DatagramPacket hello_paquet = new DatagramPacket(s.getBytes(),s.getBytes().length,inet, PORT);
+		    hello_socket.setSoTimeout(1500);
 		    hello_socket.send(hello_paquet);
+		    hello_socket.close();
+		    //datagram news
+		    DatagramSocket new_socket = new DatagramSocket(port_client);
+		    DatagramPacket new_paquet = new DatagramPacket(news, news.length);
 		    while(true)
 			{
 			    try{
 				new_socket.receive(new_paquet);
-				String recu_new = new String(new_paquet.getData(),0, new_paquet.getLength());
+				String recu_new = new String(new_paquet.getData(), "UTF-8");
+				//String recu_new = new String(new_paquet.getData(),0, new_paquet.getLength());
 				System.out.println(recu_new);
 				affiche(recu_new);
 			    }
 			    catch(SocketTimeoutException e)
 				{
+				    String recu_new = new String(new_paquet.getData(), "UTF-8");
+				    //String recu_new = parse_byte(new_paquet.getData());
+				    System.out.println(recu_new + " *");
+				    affiche(recu_new);
+				    
 				    return ;
 				}
 			}
