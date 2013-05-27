@@ -53,7 +53,7 @@ void *udp(void *arg)
    }  
 
    printf("en attente de message\n");
-   
+
    while (1) {
       bzero(tampon,256);
       // Get a message
@@ -67,22 +67,21 @@ void *udp(void *arg)
 
       pSurTampon = strtok( tampon, "!" );
       pSurTampon = strtok( pSurTampon, " " );
-      
-      if(!(strcmp(pSurTampon, "HELLO")))
-	{
-	  printf("message HELLO recu\n");
-	  char *nom; 
-	  char *ip;
-	  char *port;
-	  struct sockaddr_in addr;
-	  int sock;
-          
+     
+      if(!(strcmp(pSurTampon, "HELLO"))){
+          printf("message HELLO recu\n");
+          char *nom; 
+          char *ip;
+          char *port;
+          struct sockaddr_in addr;
+          int sock;
+                  
           nom = strtok( NULL , "," );
           ip = strtok( NULL , "," );
           port = strtok( NULL , " " ); 
-	  
+         
           printf("les info recuperer son nom:%s ,ip:%s , port:%s\n",nom,ip,port);
-	  
+
           sock = socket(PF_INET,SOCK_DGRAM,0); // Protocol family
 	  if (sock==-1) {
 	    perror("socket: ");
@@ -90,21 +89,28 @@ void *udp(void *arg)
 	  }
 	  addr.sin_family = AF_INET; // Address family
 	  addr.sin_port = htons(atoi(port));
-          addr.sin_addr.s_addr = htonl(ip);
-	  
+          inet_aton(ip,&(addr.sin_addr));
+    
           sprintf(tampon,"100 NEWS 12-56-4555 bienvenu sur le forum!");
           printf("le message renvoyer %s\n",tampon);
-	  
+
 	  if (sendto(sock,tampon,256,0,(struct sockaddr *)(&addr),sizeof(addr))==-1) {
 	    perror("sendto:");
 	    close(sock);
 	    exit(1);
 	  }
 	  close(sock);
-	}
-   }
-   printf("toto");
-   pthread_exit(NULL);
+
+
+      }
+
+
+  }
+
+
+
+
+    pthread_exit(NULL);
 }
 
 
