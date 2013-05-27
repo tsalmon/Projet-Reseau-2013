@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include "shop.h";
 #include <errno.h>
+#include <time.h>;
 
 
 void *udp(void *arg)
@@ -65,10 +66,42 @@ void *udp(void *arg)
       printf("msg: %s\n",tampon);
 
       pSurTampon = strtok( tampon, "!" );
-      pSurTampon = strtok( tampon, " " );
+      pSurTampon = strtok( pSurTampon, " " );
      
       if(!(strcmp(pSurTampon, "HELLO"))){
+          printf("message HELLO recu\n");
+          char *nom; 
+          char *ip;
+          char *port;
+          struct sockaddr_in addr;
+          int sock;
+                  
+          nom = strtok( NULL , "," );
+          ip = strtok( NULL , "," );
+          port = strtok( NULL , " " ); 
          
+          printf("les info recuperer son nom:%s ,ip:%s , port:%s\n",nom,ip,port);
+
+          sock = socket(PF_INET,SOCK_DGRAM,0); // Protocol family
+     if (sock==-1) {
+	    perror("socket: ");
+	    exit(1);
+	  }
+	  addr.sin_family = AF_INET; // Address family
+	  addr.sin_port = htons(atoi(port));
+          addr.sin_addr.s_addr = htonl(ip);
+    
+          sprintf(tampon,"100 NEWS 12-56-4555 bienvenu sur le forum!");
+          printf("le message renvoyer %s\n",tampon);
+
+	  if (sendto(sock,tampon,256,0,(struct sockaddr *)(&addr),sizeof(addr))==-1) {
+	    perror("sendto:");
+	    close(sock);
+	    exit(1);
+	  }
+	  close(sock);
+
+
       }
 
 
@@ -212,7 +245,6 @@ int main(int argc,char *argv[]) {
 
 return 1;
 } 
-
 
 
 
