@@ -1,3 +1,15 @@
+/*
+* VILLE port id -> renvoit la liste de tous les cafés(ip + port)
+* 
+* CAFE cafe -> initialise une connexion 
+*
+* HELLO pseudo [message] -> s'identifier sur la diffu
+*
+* /MP pseudo message -> envoyer un message a pseudo
+*
+* /LEFT ->Quitter un café si on est dans un café, si dans une ville, quitter la ville
+*
+*/
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -27,6 +39,11 @@ public class Client extends JFrame implements KeyListener, Runnable
     private int PORT;
     private static JTextField entree = new JTextField();
     private static JTextArea texte = new JTextArea();
+
+    ArrayList<String> cafe_nom = new ArrayList<String>();
+    ArrayList<String> cafe_ip = new ArrayList<String>();
+    ArrayList<String> cafe_port = new ArrayList<String>();
+
     private ArrayList<String> historique = new ArrayList<String>();
     private static ArrayList<String> all_historique = new ArrayList<String>();
     private int index_historique = -1;
@@ -191,6 +208,7 @@ public class Client extends JFrame implements KeyListener, Runnable
 	    socket = new Socket(inet, PORT);
 	    affiche("connexion à " + c[1] +"("+c[2]+")");
 	    etat = 1;
+	    shoplist();
 	}
 	catch(IOException e){affiche("Impossible de se connecter");}
 	catch(NumberFormatException e){affiche("Impossible de se connecter");}
@@ -204,21 +222,31 @@ public class Client extends JFrame implements KeyListener, Runnable
 	    in = new BufferedReader (new InputStreamReader (socket.getInputStream()));
 	    out.println("SHOPLIST!");
 	    out.flush();
+	    
 	    String[] liste_cafe = parse(in).split(",");
 	    String[] first_cafe = liste_cafe[0].split(" ");
-	    
 	    if(!first_cafe[0].equals("200"))
 		{
 		    all_historique.add("SHOPLIST: echec de la requete");
 		    display();
-		    return ;
+		    return;
 		}
-	    String cafe = "Liste des cafés:\n\t- " + first_cafe[first_cafe.length - 1] + "\n";
+	    cafe_nom.add(first_cafe[first_cafe.length-1]);
+	    shopinfo(cafe_nom.get(0));
+	    String cafe =  "Liste des cafés:\n\t- " + first_cafe[first_cafe.length - 1] 
+		+":"+ cafe_ip.get(0) 
+		+"("+ cafe_port.get(0) 
+		+")\n";
+	    
 	    for(int i = 1 ; i < liste_cafe.length; i++)
 		{
-		    cafe += "\t- " + liste_cafe[i]+ "\n";
+		    cafe_nom.add(liste_cafe[i]);
+		    shopinfo(liste_cafe[i]);
+		    cafe += "\t- "+ cafe_nom.get(i) +":"+ cafe_ip.get(i)+ "("+ cafe_port.get(i) +")\n";
 		}
+	    System.out.println(cafe);
 	    affiche(cafe);
+	    
 	}
 	catch (UnknownHostException e) {
 	    System.err.println("Serveur inconnu");
@@ -246,8 +274,8 @@ public class Client extends JFrame implements KeyListener, Runnable
 		    return ;
 		}
 	    String[] info = reponse[2].split(",");
-	    all_historique.add("SHOPINFO "+cafe +":\n\tadresse: " + info[1] + "\n\tPort connexion:" + info[2] );
-	    display();
+	    cafe_ip.add(info[1]);
+	    cafe_port.add(info[2]);
 	}
 	catch (UnknownHostException e) {
 	    System.err.println("Serveur inconnu");
