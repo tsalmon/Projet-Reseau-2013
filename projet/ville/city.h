@@ -7,6 +7,12 @@ typedef struct{
   short port;
 } cityInfo;
 
+typedef struct{
+  int sock;
+  char tampon[256];
+  struct sockaddr_in from;
+} infoUdp;
+
 int autonomous;
 cityInfo *me;
 
@@ -18,3 +24,4 @@ cityInfo *previousCity;
 
 
 void insertAldermen(int,char[512],char*);
+
