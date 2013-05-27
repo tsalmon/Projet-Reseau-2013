@@ -339,49 +339,74 @@ public class Client extends JFrame implements KeyListener, Runnable
 	    }
     }
     
+    public void affiche_news(String [] news)
+    {
+	String message_final = "";
+	for(int i = 0 ; i < news.length; i++)
+	    {
+		String[] decoupe = news[i].split(" ");
+		if(decoupe.length > 2)
+		    message_final += decoupe[2] + ": " + decoupe[3] + "\n"; 
+	    }
+	affiche(message_final);
+    }
+    
+    public int portlibre()
+    {
+	int i = 11111;
+	boolean b = false;
+	while(!b){
+	    try{
+		DatagramSocket new_socket = new DatagramSocket(i);
+		new_socket.close();
+		b = true;
+	    }
+	    catch(Exception e){
+		//e.printStackTrace();
+		//System.exit(0);
+		i++;
+	    }
+	}
+	return i;
+    }
+    
     public void hello(String pseudo, String ip,String message)
     {
-	    port_client = 11111;
-	    etat = 3;
-	    this.pseudo = pseudo;
-	    try 
-		{
-		    byte[] news = new byte[1024];
-		    String s = "HELLO " + pseudo + "," + ip + "," + port_client + "," + message +"!";
-		    // datagram hello
-		    DatagramSocket hello_socket = new DatagramSocket();
-		    DatagramPacket hello_paquet = new DatagramPacket(s.getBytes(),s.getBytes().length,inet, PORT);
-		    hello_socket.setSoTimeout(1500);
-		    hello_socket.send(hello_paquet);
-		    hello_socket.close();
-		    //datagram news
-		    DatagramSocket new_socket = new DatagramSocket(port_client);
-		    DatagramPacket new_paquet = new DatagramPacket(news, news.length);
-		    while(true)
-			{
-			    try{
-				new_socket.receive(new_paquet);
-				String recu_new = new String(new_paquet.getData(), "UTF-8");
-				//String recu_new = new String(new_paquet.getData(),0, new_paquet.getLength());
-				System.out.println(recu_new);
-				affiche(recu_new);
-			    }
-			    catch(SocketTimeoutException e)
-				{
-				    String recu_new = new String(new_paquet.getData(), "UTF-8");
-				    //String recu_new = parse_byte(new_paquet.getData());
-				    System.out.println(recu_new + " *");
-				    affiche(recu_new);
-				    
-				    return ;
-				}
+	port_client = portlibre();
+	etat = 3;
+	this.pseudo = pseudo;
+	String recu_new = "";
+	try 
+	    {
+		byte[] news = new byte[1024];
+		String s = "HELLO " + pseudo + "," + ip + "," + port_client + "," + message +"!";
+		// datagram hello
+		DatagramSocket hello_socket = new DatagramSocket();
+		DatagramPacket hello_paquet = new DatagramPacket(s.getBytes(),s.getBytes().length,inet, PORT);
+		//datagram news
+		DatagramSocket new_socket = new DatagramSocket(port_client);
+		DatagramPacket new_paquet = new DatagramPacket(news, news.length);
+		new_socket.setSoTimeout(750);
+		hello_socket.send(hello_paquet);
+		while(true)
+		    {
+			try{
+			    new_socket.receive(new_paquet);
+			    recu_new += new String(new_paquet.getData(), "ASCII");
 			}
-		}
-	    catch(Exception e) 
-		{
-		    e.printStackTrace();
-		}
-	    
+			catch(SocketTimeoutException e)
+			    {
+				
+				affiche_news(recu_new.split("!"));
+				return ;
+			    }
+		    }
+	    }
+	catch(Exception e) 
+	    {
+		e.printStackTrace();
+	    }
+	
     }
     
     public void commande()

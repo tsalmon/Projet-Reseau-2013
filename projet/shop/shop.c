@@ -90,7 +90,8 @@ void *udp(void *arg)
 	  }
 	  addr.sin_family = AF_INET; // Address family
 	  addr.sin_port = htons(atoi(port));
-          addr.sin_addr.s_addr = htonl(ip);
+	  inet_aton(ip, &(addr.sin_addr));
+	  //addr.sin_addr.s_addr = htonl(ip);
 	  
           sprintf(tampon,"100 NEWS 12-56-4555 bienvenu sur le forum!");
           printf("le message renvoyer %s\n",tampon);
