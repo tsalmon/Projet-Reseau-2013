@@ -365,6 +365,7 @@ public class Client extends JFrame implements KeyListener, Runnable
 		//e.printStackTrace();
 		//System.exit(0);
 		i++;
+		System.out.println(i);
 	    }
 	}
 	return i;
