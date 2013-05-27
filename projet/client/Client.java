@@ -1,15 +1,16 @@
 /*
-* VILLE port id -> renvoit la liste de tous les cafés(ip + port)
-* 
-* CAFE cafe -> initialise une connexion 
-*
-* HELLO pseudo [message] -> s'identifier sur la diffu
-*
-* /MP pseudo message -> envoyer un message a pseudo
-*
-* /LEFT ->Quitter un café si on est dans un café, si dans une ville, quitter la ville
-*
-*/
+ *0) pas dans une ville
+ * VILLE port id -> renvoit la liste de tous les cafés(ip + port)
+ *1)Co a une ville 
+ * CAFE cafe -> initialise une connexion 
+ *2)vers etape 3 
+ * HELLO pseudo [message] -> s'identifier sur la diffu
+ *
+ * /MP pseudo message -> envoyer un message a pseudo
+ *
+ * /LEFT ->Quitter un café si on est dans un café, si dans une ville, quitter la ville
+ *
+ */
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -34,15 +35,18 @@ public class Client extends JFrame implements KeyListener, Runnable
     private int mode; 
     private String pseudo;
     static Thread recu;
+
+    static int port_client = -1;
     
     private InetAddress inet = null;
     private int PORT;
     private static JTextField entree = new JTextField();
     private static JTextArea texte = new JTextArea();
 
+    int id_cafe = -1;
     ArrayList<String> cafe_nom = new ArrayList<String>();
     ArrayList<String> cafe_ip = new ArrayList<String>();
-    ArrayList<String> cafe_port = new ArrayList<String>();
+    ArrayList<Integer> cafe_port = new ArrayList<Integer>();
 
     private ArrayList<String> historique = new ArrayList<String>();
     private static ArrayList<String> all_historique = new ArrayList<String>();
@@ -72,7 +76,11 @@ public class Client extends JFrame implements KeyListener, Runnable
 	texte.setFont(new Font("Monospaced", Font.PLAIN, 14));
 	texte.setEditable(false);
 	JScrollPane scroll = new JScrollPane(texte, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-	
+	addWindowListener( new WindowAdapter() {
+		public void windowOpened( WindowEvent e ){
+                    entree.requestFocus();
+		}
+	    } );	
 	this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	this.setSize(700, 300);
 	this.setTitle("Arbre a Palarbre");
@@ -91,7 +99,7 @@ public class Client extends JFrame implements KeyListener, Runnable
     public void keyPressed(KeyEvent e){
 	if(e.getKeyCode() == 10)
 	    {
-		if(etat < 2)
+		if(etat < 3)
 		    {
 			commande();
 		    }
@@ -200,7 +208,7 @@ public class Client extends JFrame implements KeyListener, Runnable
 	return retour;
     }
     
-    public void connexion_ville(String[] c)
+    public void ville(String[] c)
     {
 	try{
 	    PORT = Integer.parseInt(c[2]);
@@ -222,7 +230,7 @@ public class Client extends JFrame implements KeyListener, Runnable
 	    in = new BufferedReader (new InputStreamReader (socket.getInputStream()));
 	    out.println("SHOPLIST!");
 	    out.flush();
-	    
+
 	    String[] liste_cafe = parse(in).split(",");
 	    String[] first_cafe = liste_cafe[0].split(" ");
 	    if(!first_cafe[0].equals("200"))
@@ -231,22 +239,21 @@ public class Client extends JFrame implements KeyListener, Runnable
 		    display();
 		    return;
 		}
-	    cafe_nom.add(first_cafe[first_cafe.length-1]);
+	    cafe_nom.add(first_cafe[first_cafe.length-1].substring(0, first_cafe[first_cafe.length-1].length() - 1));
 	    shopinfo(cafe_nom.get(0));
-	    String cafe =  "Liste des cafés:\n\t- " + first_cafe[first_cafe.length - 1] 
-		+":"+ cafe_ip.get(0) 
-		+"("+ cafe_port.get(0) 
+	    String cafe =  "Liste des cafés:\n\t- " + cafe_nom.get(0) 
+		+": "+ cafe_ip.get(0) 
+		+" ("+ cafe_port.get(0) 
 		+")\n";
-	    
+
 	    for(int i = 1 ; i < liste_cafe.length; i++)
 		{
-		    cafe_nom.add(liste_cafe[i]);
+		    cafe_nom.add(liste_cafe[i].substring(0, liste_cafe[i].length() - 1));
 		    shopinfo(liste_cafe[i]);
 		    cafe += "\t- "+ cafe_nom.get(i) +":"+ cafe_ip.get(i)+ "("+ cafe_port.get(i) +")\n";
 		}
-	    System.out.println(cafe);
 	    affiche(cafe);
-	    
+
 	}
 	catch (UnknownHostException e) {
 	    System.err.println("Serveur inconnu");
@@ -275,7 +282,7 @@ public class Client extends JFrame implements KeyListener, Runnable
 		}
 	    String[] info = reponse[2].split(",");
 	    cafe_ip.add(info[1]);
-	    cafe_port.add(info[2]);
+	    cafe_port.add(Integer.parseInt(info[2]));
 	}
 	catch (UnknownHostException e) {
 	    System.err.println("Serveur inconnu");
@@ -287,47 +294,92 @@ public class Client extends JFrame implements KeyListener, Runnable
 	    System.err.println("Le port doit etre un entier naturel");
 	}
     }
+    
+    public int cafe_in_liste(String s)
+    {
+	for(int i = 0 ; i < cafe_nom.size(); i++)
+	    if(cafe_nom.get(i).equals(s))
+		return i;
+	return -1;
+    }
 
-    public void hello(String pseudo, String ip, String port, String message)
+    public void cafe(String cafe)
+    {
+	int id = cafe_in_liste(cafe);
+	if(id < 0)
+	    affiche("Le cafe n'existe pas dans la ville");
+	else
+	    {
+		try{
+		    inet = InetAddress.getByName(cafe_ip.get(id)); 
+		    PORT = cafe_port.get(id);
+		    etat = 2;
+		    affiche("Connexion cafe... presentez vous : pseudo [, ip] [, message]");
+		}
+		catch(UnknownHostException e){
+		    affiche("Erreur inconnu");
+		}
+	    }
+    }
+    
+    public void hello(String pseudo, String ip,String message)
     {
 	try{
-	    this.pseudo = pseudo;
-	    inet = InetAddress.getByName(ip); 
-	    PORT = Integer.parseInt(port);
-	    recu = new Thread(new Client(inet, PORT, 0));
-	    recu.start();
-	    write("CONNEXION " + pseudo);
-	    if(message.length() > 0)
-		{
-		    write("MESSAGE " + pseudo + " " + message );
+	    /*
+	    // cherche un port libre
+	    int i = 0;
+	    while (port_client == -1) {
+		Port p = new Port(i);
+		p.setDaemon(true);
+		p.start();
+		i++;
+	    }
+	    */
+	    port_client = 11111;
+	    out = new PrintWriter(socket.getOutputStream());
+	    System.out.println(port_client);
+	    DatagramSocket socket = new DatagramSocket(port_client);
+	    socket.setSoTimeout(1000);
+	    byte [] news = new byte[100];
+	    DatagramPacket paquet = new DatagramPacket(news, news.length); 
+	    out.println("HELLO " + pseudo + " " + ip + " " + message + "!");
+	    out.flush();
+	    
+	    // reception des données, definition de la taille de reception                   
+	    while(true){
+		try{
+		    socket.receive(paquet);
+		    String chaine = new String(paquet.getData());
+		    affiche(chaine);
 		}
-	    etat = 2;
+		catch(SocketTimeoutException e){
+		    return;
+		}
+	    }
 	}
-	catch(UnknownHostException e){
-	    all_historique.add("HELLO: impossible de lancer la connexion");
-	    display();
+	catch(Exception e){
+	    e.printStackTrace();
 	}
     }
     
-    /*
-      if(s.length() == 0 || s.charAt(0) != '!')
-      {
-      return;
-      }
-    */    
     public void commande()
     {
 	String s = entree.getText(); // in
 	String[] c = s.split(" ");
 	if(c[0].equals("VILLE") && c.length == 3)
 	    {
-		connexion_ville(c);
+		ville(c);
 	    }
 	else if(c[0].equals("SHOPLIST"))
 	    {
 		if(etat == 1)
 		    {
-			shoplist();
+			String cafe = "Liste des cafés\n\t";
+			for(int i = 0 ; i < cafe_nom.size(); i++)
+			    {
+				cafe += "-" + cafe_nom.get(i) + ":" + cafe_ip.get(i) + "(" + cafe_port.get(i) + ")\n\t";
+			    }
+			affiche(cafe);
 		    }
 		else
 		    {
@@ -335,33 +387,33 @@ public class Client extends JFrame implements KeyListener, Runnable
 			display();
 		    }
 	    }
-	else if(c[0].equals("SHOPINFO") && c.length == 2)
+	else if(c[0].equals("CAFE") && c.length == 2)
 	    {
 		if(etat == 1)
 		    {
-			shopinfo(c[1]);
+			cafe(c[1]);
 		    }
 		else
 		    {
 			all_historique.add("Pas de connexion");
 			display();
 		    }
+
 	    }
- 	else if(c[0].equals("HELLO") && ( c.length == 4 || c.length == 5))
+ 	else if(c[0].equals("HELLO") && ( c.length > 1 && c.length < 5))
 	    {
-		if(etat == 1)
+		if(etat == 2)
 		    {
-			hello(c[1], c[2], c[3], (c.length == 5) ? c[4] : "");
+			hello(c[1], (c.length > 2) ? c[2] : "127.0.0.1", (c.length == 4) ? c[3] : "");
 		    }
 		else
 		    {
-			all_historique.add("Pas de connexion");
+			all_historique.add("Vous devez d'abord choisir un cafe");
 			display();
 		    }
 	    }
 	else{
-	    all_historique.add("Les commandes doivent commencer par un '!'");
-	    display();
+	    affiche("Mauvaise commande");
 	}
 	   
     }
@@ -375,5 +427,21 @@ public class Client extends JFrame implements KeyListener, Runnable
 	catch(Exception e)
 	    {
 	    }
+    }
+}
+
+class Port extends Thread {
+    protected int _serverPort = 0;
+    
+    public Port(int serverPort) {
+	_serverPort = serverPort;
+    }
+    
+    public void run() {
+	try {
+	    Socket socket = new Socket("localhost", _serverPort);
+	    Client.port_client = _serverPort;
+	} catch (Exception e) {
+	}
     }
 }
