@@ -661,4 +661,3 @@ if(haveNextCity){
 
 
 }
-
