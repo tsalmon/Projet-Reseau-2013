@@ -57,17 +57,18 @@ public class Client extends JFrame implements KeyListener, Runnable
     private static Socket socket;
     
     boolean reader = false;
-    int etat = 0;
+    static int etat = 0;
     /*
       0: recherche de ville
       1: connexion a une ville
      */
-    Client(InetAddress inet, int PORT, int mode)
+    Client(InetAddress inet, int PORT, String pseudo)
     {
 	reader = true;
 	this.inet = inet;
 	this.PORT = PORT;
-	this.mode = mode;
+	this.mode = 0;
+	this.pseudo = pseudo;
     }
     
     Client()
@@ -99,16 +100,35 @@ public class Client extends JFrame implements KeyListener, Runnable
     public void keyPressed(KeyEvent e){
 	if(e.getKeyCode() == 10)
 	    {
+		String s = entree.getText();
 		if(etat < 3)
+		    commande();
+		else if(etat == 3)
 		    {
-			commande();
-		    }
-		else
-		    {
-			String s = entree.getText();
+			String[] c = s.split(" ");
 			historique.add(s);
 			index_historique++;
-			write("MESSAGE " + pseudo + " " + s);
+			if(c[0].equals("/TO") && c.length == 2)
+			    mp(c[1]);
+			else if(c[0].equals("/TO") && c.length == 1)
+			    write("HEY " + pseudo + " TO " +  c[1]);
+			else if(c[0].equals("/FROM" ) && c.length > 1 && c.length < 3)
+			    {
+				PORT = portlibre();
+				write("HEY " + c[1] + " FROM " + pseudo + " 127.0.0.1 " + PORT);
+				etat = 4;
+			    }
+			else if(c[0].equals("/LEFT"))
+			    System.out.println("a finir");
+			else
+			    write("MESSAGE " + pseudo + " " + s);
+		    }
+		else if(etat == 4){
+		    mp(s);
+		}
+		else if(s.equals("/LEFT"))
+		    {
+			System.out.println(" a finir");
 		    }
 		entree.setText("");
 	    }
@@ -131,6 +151,35 @@ public class Client extends JFrame implements KeyListener, Runnable
     public void keyTyped(KeyEvent e){
     }
 
+    public void mp(String message)
+    {
+	try{
+            ServerSocket socketAttente = new ServerSocket(PORT);
+	    Socket service = socketAttente.accept();
+	    
+	    BufferedReader bf = new BufferedReader( new InputStreamReader(service.getInputStream()));
+
+	    PrintWriter pw = new PrintWriter( new OutputStreamWriter(service.getOutputStream()));
+	    pw.println("MESSAGE" + message);
+	    
+	    String reponse = bf.readLine();
+	    affiche(reponse);
+	    pw.close();
+	    bf.close();
+	    service.close();
+	}
+	catch(Exception e){
+	    System.err.println("Erreur sérieuse : " + e);
+	    e.printStackTrace();
+	    System.exit(1);
+	}
+    }
+    
+    public void left()
+    {
+	affiche("partir");
+    }
+    
     public void display()
     {
 	String toDisplay = "";
@@ -146,8 +195,7 @@ public class Client extends JFrame implements KeyListener, Runnable
     {
 	try {
             DatagramSocket ms = new DatagramSocket();
-            InetAddress ia = inet;
-	    DatagramPacket dp = new DatagramPacket(txt.getBytes(),txt.getBytes().length,ia,PORT);
+	    DatagramPacket dp = new DatagramPacket(txt.getBytes(),txt.getBytes().length,inet,PORT);
 	    ms.send(dp);
 	} catch(Exception e) {
             e.printStackTrace();
@@ -157,12 +205,13 @@ public class Client extends JFrame implements KeyListener, Runnable
     public void read()
     {
         try{
+	    boolean mp_mode = false;
             byte [] data = new byte[256];
             InetAddress ia = inet;
             MulticastSocket ms = new MulticastSocket(PORT);
             ms.joinGroup(ia);
             DatagramPacket dp = new DatagramPacket(data, data.length);
-            while (true) {
+            while (!mp_mode) {
                 ms.receive(dp);
                 String recupere = new String(dp.getData(),0,dp.getLength());
 		String [] reponse = recupere.split(" ");
@@ -175,6 +224,27 @@ public class Client extends JFrame implements KeyListener, Runnable
 		else if(reponse[0].equals("HELLO")){
 		    s = reponse[1] + " vient de se rejoindre le cafe";  
 		}
+		else if(reponse[0].equals("HEY") || (reponse[0].equals("300") && (reponse[1].equals("HEY"))))
+		    {
+			if(reponse[2].equals("TO")){
+			    if(!reponse[1].equals(pseudo) && reponse[3].equals(pseudo)){
+				affiche("MP:" + reponse[1] + " souhaite discuter avec vous");
+			    }
+			    else{
+				affiche("MP: invitation envoye a " + reponse[3] );
+			    }
+			}
+			else{
+			    if(!reponse[2].equals(pseudo) && reponse[4].equals(pseudo)){
+				affiche("MP:" + reponse[1] + " a accepter de discuter avec vous");
+			    }
+			    else{
+				affiche("Vous avez accepte de discuter avec " + reponse[2]);
+			    }
+			    mp_mode = true;
+			    etat = 4;
+			}
+		    }	    
 		else if(reponse[0].equals("CLOSE"))
 		    {
 			s = "Cafe ferme";
@@ -186,7 +256,7 @@ public class Client extends JFrame implements KeyListener, Runnable
             e.printStackTrace();
         }
     }
-
+    
     public void affiche(String s)
     {
 	all_historique.add(s);
@@ -216,7 +286,6 @@ public class Client extends JFrame implements KeyListener, Runnable
 	int x = (int)in[0];
 	while(i < in.length && x != 33)
 	    {
-		System.out.println(x);
 		retour += (char) x; 
 		x = in[i];
 		i++;
@@ -365,7 +434,6 @@ public class Client extends JFrame implements KeyListener, Runnable
 		//e.printStackTrace();
 		//System.exit(0);
 		i++;
-		System.out.println(i);
 	    }
 	}
 	return i;
@@ -453,7 +521,7 @@ public class Client extends JFrame implements KeyListener, Runnable
 		if(etat == 2)
 		    {
 			hello(c[1], (c.length > 2) ? c[2] : "127.0.0.1", (c.length == 4) ? c[3] : "Bonjour");
-			recu = new Thread(new Client(inet, PORT, 0));
+			recu = new Thread(new Client(inet, PORT, pseudo));
 			recu.start();
 		    }
 		else
@@ -477,21 +545,5 @@ public class Client extends JFrame implements KeyListener, Runnable
 	catch(Exception e)
 	    {
 	    }
-    }
-}
-
-class Port extends Thread {
-    protected int _serverPort = 0;
-    
-    public Port(int serverPort) {
-	_serverPort = serverPort;
-    }
-    
-    public void run() {
-	try {
-	    Socket socket = new Socket("localhost", _serverPort);
-	    Client.port_client = _serverPort;
-	} catch (Exception e) {
-	}
     }
 }
